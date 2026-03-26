@@ -2,6 +2,16 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 import os
+import unicodedata
+
+# ===============================
+# CONFIG (CHAMAR UMA VEZ, NO TOPO)
+# ===============================
+st.set_page_config(
+    page_title="Sistema de Consulta Hazard Grade",
+    page_icon="🔍",
+    layout="centered"
+)
 
 # ===============================
 # CREDENCIAIS
@@ -10,14 +20,46 @@ USUARIO_CORRETO = "allianz_mrm"
 SENHA_CORRETA = "@9A3F7C2E4BÇ!#"
 
 # ===============================
-# CONTROLE DE LOGIN
+# SESSION STATE
 # ===============================
-if "autenticado" not in st.session_state:
-    st.session_state.autenticado = False
+st.session_state.setdefault("autenticado", False)
+st.session_state.setdefault("termo", "")
+st.session_state.setdefault("input_busca", "")
+st.session_state.setdefault("executar_busca", False)
 
+# ===============================
+# FUNÇÕES
+# ===============================
+def normalizar_texto(texto):
+    if texto is None:
+        return ""
+    texto = str(texto).strip().lower()
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    return texto
+
+def on_change_busca():
+    st.session_state.termo = st.session_state.input_busca
+    st.session_state.executar_busca = False
+
+def limpar_tudo():
+    st.session_state.input_busca = ""
+    st.session_state.termo = ""
+    st.session_state.executar_busca = False
+
+def pesquisar_agora():
+    st.session_state.termo = st.session_state.input_busca
+    st.session_state.executar_busca = True
+
+def selecionar_sugestao(valor):
+    st.session_state.input_busca = valor
+    st.session_state.termo = valor
+    st.session_state.executar_busca = True
+
+# ===============================
+# TELA DE LOGIN
+# ===============================
 if not st.session_state.autenticado:
-    st.set_page_config(page_title="Login", page_icon="🔐", layout="centered")
-
     st.markdown("## 🔐 Acesso restrito")
     usuario = st.text_input("Usuário")
     senha = st.text_input("Senha", type="password")
@@ -40,15 +82,6 @@ EXCEL_PATH = BASE_DIR / "HG_ATUALIZADOS.xlsx"
 LOGO_PATH = BASE_DIR / "allianz_logo.png"
 
 # ===============================
-# CONFIG
-# ===============================
-st.set_page_config(
-    page_title="Hazard Grade Explorer",
-    page_icon="🔍",
-    layout="centered"
-)
-
-# ===============================
 # CSS
 # ===============================
 css = (
@@ -56,10 +89,14 @@ css = (
     ".stApp{background-color:#0A2D82;}"
     "h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}"
     ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
-    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:45px;}"
+    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:10px;}"
     ".clear-x button{background:none;border:none;font-size:20px;"
-    "color:#0A2D82;font-weight:900;cursor:pointer;margin-top:32px;}"
-    ".clear-x button:hover{color:#D32F2F;}"
+    "color:#FFFFFF;font-weight:900;cursor:pointer;margin-top:32px;}"
+    ".clear-x button:hover{color:#FFCDD2;}"
+    ".chip button{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.35)!important;"
+    "color:#fff!important;border-radius:999px!important;padding:6px 12px!important;margin:4px 6px 0 0!important;"
+    "font-weight:700!important;}"
+    ".chip button:hover{background:rgba(255,255,255,.25)!important;}"
     "div.stButton>button{height:50px;border-radius:12px;font-weight:bold;"
     "border:2px solid white;background:transparent;color:white;transition:.2s;}"
     "div.stButton>button:hover{background:white;color:#0A2D82;}"
@@ -87,18 +124,13 @@ st.markdown(
 )
 
 # ===============================
-# SESSION STATE
-# ===============================
-if "termo" not in st.session_state:
-    st.session_state.termo = ""
-
-# ===============================
 # CARREGAR EXCEL
 # ===============================
 @st.cache_data
 def carregar_dados():
     if not EXCEL_PATH.exists():
         st.error("❌ Arquivo HG_ATUALIZADOS.xlsx não encontrado.")
+        st.write("📁 Arquivos encontrados:", sorted(os.listdir(BASE_DIR)))
         st.stop()
 
     df = pd.read_excel(EXCEL_PATH)
@@ -106,46 +138,72 @@ def carregar_dados():
 
     if "ATIVIDADE" not in df.columns or "HAZARD GRADE" not in df.columns:
         st.error("❌ O Excel deve conter ATIVIDADE e HAZARD GRADE.")
+        st.write("Colunas encontradas:", list(df.columns))
         st.stop()
 
-    return df
+    df["ATIVIDADE"] = df["ATIVIDADE"].astype(str)
+    df["_ATIVIDADE_LIMPA"] = df["ATIVIDADE"].apply(normalizar_texto)
 
-df = carregar_dados()
+    # lista única para autocomplete
+    base = df[["ATIVIDADE", "_ATIVIDADE_LIMPA"]].drop_duplicates()
+    base = base.sort_values("ATIVIDADE")
+    sugestoes = list(base.itertuples(index=False, name=None))  # (ATIVIDADE, _ATIVIDADE_LIMPA)
 
-# ===============================
-# FORM DE BUSCA (COM X)
-# ===============================
-with st.form("form_busca", clear_on_submit=False):
-    col_input, col_x = st.columns([12, 1])
+    return df, sugestoes
 
-    with col_input:
-        termo = st.text_input(
-            "O que você deseja buscar?",
-            placeholder="Ex: Fabricação de tintas...",
-            value=st.session_state.termo
-        )
-
-    with col_x:
-        limpar_x = st.form_submit_button("✕")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        pesquisar = st.form_submit_button("🔍 Pesquisar")
-    with col2:
-        limpar = st.form_submit_button("🗑️ Limpar")
+df, sugestoes_base = carregar_dados()
 
 # ===============================
-# AÇÕES
+# BUSCA + X + BOTÕES
 # ===============================
-if limpar or limpar_x:
-    st.session_state.termo = ""
-    st.rerun()
+col_input, col_x = st.columns([12, 1])
 
-if pesquisar:
-    st.session_state.termo = termo
+with col_input:
+    st.text_input(
+        "O que você deseja buscar?",
+        placeholder="Ex: Fabricação de tintas...",
+        key="input_busca",
+        on_change=on_change_busca
+    )
+
+with col_x:
+    st.markdown("<div class='clear-x'>", unsafe_allow_html=True)
+    st.button("✕", key="btn_x", on_click=limpar_tudo, help="Limpar campo")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+col1, col2 = st.columns(2)
+with col1:
+    st.button("🔍 Pesquisar", on_click=pesquisar_agora)
+with col2:
+    st.button("🗑️ Limpar", on_click=limpar_tudo)
 
 # ===============================
-# RESULTADOS
+# AUTOCOMPLETE (DESKTOP + MOBILE)
+# ===============================
+termo_digitado = st.session_state.input_busca
+termo_limpo = normalizar_texto(termo_digitado)
+
+if termo_limpo:
+    # sugestões por "contém" (bom pra mobile/desktop)
+    sugestoes = []
+    for atividade, atividade_limpa in sugestoes_base:
+        if termo_limpo in atividade_limpa:
+            sugestoes.append(atividade)
+        if len(sugestoes) >= 8:
+            break
+
+    if sugestoes:
+        st.markdown("**Sugestões:**")
+        # chips em colunas (no mobile empilha, no desktop fica lado a lado)
+        cols = st.columns(2)
+        for i, sug in enumerate(sugestoes):
+            with cols[i % 2]:
+                st.markdown("<div class='chip'>", unsafe_allow_html=True)
+                st.button(sug, key=f"sug_{i}_{sug}", on_click=selecionar_sugestao, args=(sug,))
+                st.markdown("</div>", unsafe_allow_html=True)
+
+# ===============================
+# RENDER RESULTADO
 # ===============================
 def renderizar_resultado(atividade, hazard):
     try:
@@ -161,12 +219,16 @@ def renderizar_resultado(atividade, hazard):
         alerta = ""
     else:
         cor = "#D32F2F"
-        alerta = "<div class='alert-box'>⚠️ HAZARD ALTO</div>"
+        alerta = (
+            "<div class='alert-box'>"
+            "⚠️ HAZARD ALTO: Verifique possível solicitação de inspeção!"
+            "</div>"
+        )
 
     html = (
         "<div class='result-card' style='border-left-color:" + cor + ";'>"
         "<div class='ativid-title'>ATIVIDADE</div>"
-        "<div>" + str(atividade) + "</div>"
+        "<div style='color:#333;margin-bottom:10px;'>" + str(atividade) + "</div>"
         "<div class='ativid-title'>HAZARD GRADE</div>"
         "<div class='hazard-value' style='color:" + cor + ";'>" + str(hazard) + "</div>"
         + alerta +
@@ -174,17 +236,19 @@ def renderizar_resultado(atividade, hazard):
     )
     st.markdown(html, unsafe_allow_html=True)
 
-if pesquisar and st.session_state.termo:
-    resultados = df[
-        df["ATIVIDADE"]
-        .astype(str)
-        .str.contains(st.session_state.termo, case=False, na=False)
-    ]
-
-    if resultados.empty:
-        st.error(f"Nenhum resultado encontrado para '{st.session_state.termo}'.")
+# ===============================
+# EXECUTAR BUSCA (NORMALIZADA)
+# ===============================
+if st.session_state.executar_busca:
+    termo_busca = normalizar_texto(st.session_state.termo)
+    if termo_busca:
+        resultados = df[df["_ATIVIDADE_LIMPA"].str.contains(termo_busca, na=False)]
+        if resultados.empty:
+            st.error(f"Nenhum resultado encontrado para '{st.session_state.termo}'.")
+        else:
+            for _, row in resultados.iterrows():
+                renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
     else:
-        for _, row in resultados.iterrows():
-            renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
+        st.warning("Digite um termo para pesquisar.")
 else:
-    st.info("👋 Digite uma atividade e clique em Pesquisar.")
+    st.info("👋 Digite uma atividade e clique em Pesquisar (ou toque em uma sugestão).")
