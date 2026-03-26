@@ -20,18 +20,17 @@ st.set_page_config(
 )
 
 # ===============================
-# CSS (ADICIONADO BOTÃO X)
+# CSS (X NO INPUT)
 # ===============================
 css = (
     "<style>"
     ".stApp{background-color:#0A2D82;}"
     "h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}"
-    ".stTextInput{position:relative;}"
     ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
-    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:45px;}"
-    ".clear-btn{position:absolute;right:15px;top:50%;transform:translateY(-50%);"
-    "font-size:20px;color:#0A2D82;cursor:pointer;font-weight:900;}"
-    ".clear-btn:hover{color:#D32F2F;}"
+    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:40px;}"
+    ".clear-x button{background:none;border:none;font-size:20px;"
+    "color:#0A2D82;font-weight:900;cursor:pointer;}"
+    ".clear-x button:hover{color:#D32F2F;}"
     "div.stButton>button{height:50px;border-radius:12px;font-weight:bold;"
     "border:2px solid white;background:transparent;color:white;transition:.2s;}"
     "div.stButton>button:hover{background:white;color:#0A2D82;}"
@@ -77,7 +76,7 @@ def carregar_dados():
     df.columns = df.columns.str.strip().str.upper()
 
     if "ATIVIDADE" not in df.columns or "HAZARD GRADE" not in df.columns:
-        st.error("❌ Colunas esperadas não encontradas.")
+        st.error("❌ O Excel precisa conter ATIVIDADE e HAZARD GRADE.")
         st.stop()
 
     return df
@@ -85,21 +84,22 @@ def carregar_dados():
 df = carregar_dados()
 
 # ===============================
-# FORM DE BUSCA
+# FORM DE BUSCA (COM X)
 # ===============================
 with st.form("form_busca", clear_on_submit=False):
-    termo = st.text_input(
-        "O que você deseja buscar?",
-        placeholder="Ex: Fabricação de tintas...",
-        value=st.session_state.termo,
-        key="input_busca"
-    )
+    col_input, col_x = st.columns([12, 1])
 
-    # BOTÃO X (HTML)
-    if st.session_state.termo:
-        if st.button("❌", key="clear_x"):
-            st.session_state.termo = ""
-            st.rerun()
+    with col_input:
+        termo = st.text_input(
+            "O que você deseja buscar?",
+            placeholder="Ex: Fabricação de tintas...",
+            value=st.session_state.termo
+        )
+
+    with col_x:
+        st.markdown("<div class='clear-x'>", unsafe_allow_html=True)
+        limpar_x = st.form_submit_button("✕")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -110,7 +110,7 @@ with st.form("form_busca", clear_on_submit=False):
 # ===============================
 # AÇÕES
 # ===============================
-if limpar:
+if limpar or limpar_x:
     st.session_state.termo = ""
     st.rerun()
 
@@ -121,7 +121,11 @@ if pesquisar:
 # RESULTADOS
 # ===============================
 def renderizar_resultado(atividade, hazard):
-    hz = float(hazard) if str(hazard).replace(".", "").isdigit() else 0
+    try:
+        hz = float(hazard)
+    except Exception:
+        hz = 0.0
+
     if hz <= 4:
         cor = "#00C853"
         alerta = ""
@@ -144,9 +148,17 @@ def renderizar_resultado(atividade, hazard):
     st.markdown(html, unsafe_allow_html=True)
 
 if pesquisar and st.session_state.termo:
-    resultados = df[df["ATIVIDADE"].str.contains(st.session_state.termo, case=False, na=False)]
-    for _, row in resultados.iterrows():
-        renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
+    resultados = df[
+        df["ATIVIDADE"]
+        .astype(str)
+        .str.contains(st.session_state.termo, case=False, na=False)
+    ]
+
+    if resultados.empty:
+        st.error(f"Nenhum resultado encontrado para '{st.session_state.termo}'.")
+    else:
+        for _, row in resultados.iterrows():
+            renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
 else:
     st.info("👋 Digite uma atividade e clique em Pesquisar.")
 ``
