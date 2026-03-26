@@ -20,16 +20,16 @@ st.set_page_config(
 )
 
 # ===============================
-# CSS (X NO INPUT)
+# CSS
 # ===============================
 css = (
     "<style>"
     ".stApp{background-color:#0A2D82;}"
     "h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}"
     ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
-    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:40px;}"
+    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:45px;}"
     ".clear-x button{background:none;border:none;font-size:20px;"
-    "color:#0A2D82;font-weight:900;cursor:pointer;}"
+    "color:#0A2D82;font-weight:900;cursor:pointer;margin-top:32px;}"
     ".clear-x button:hover{color:#D32F2F;}"
     "div.stButton>button{height:50px;border-radius:12px;font-weight:bold;"
     "border:2px solid white;background:transparent;color:white;transition:.2s;}"
@@ -69,14 +69,14 @@ if "termo" not in st.session_state:
 @st.cache_data
 def carregar_dados():
     if not EXCEL_PATH.exists():
-        st.error("❌ Não encontrei o arquivo HG_ATUALIZADOS.xlsx.")
+        st.error("❌ Arquivo HG_ATUALIZADOS.xlsx não encontrado.")
         st.stop()
 
     df = pd.read_excel(EXCEL_PATH)
     df.columns = df.columns.str.strip().str.upper()
 
     if "ATIVIDADE" not in df.columns or "HAZARD GRADE" not in df.columns:
-        st.error("❌ O Excel precisa conter ATIVIDADE e HAZARD GRADE.")
+        st.error("❌ O Excel deve conter ATIVIDADE e HAZARD GRADE.")
         st.stop()
 
     return df
@@ -97,9 +97,7 @@ with st.form("form_busca", clear_on_submit=False):
         )
 
     with col_x:
-        st.markdown("<div class='clear-x'>", unsafe_allow_html=True)
         limpar_x = st.form_submit_button("✕")
-        st.markdown("</div>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
     with col1:
@@ -161,4 +159,3 @@ if pesquisar and st.session_state.termo:
             renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
 else:
     st.info("👋 Digite uma atividade e clique em Pesquisar.")
-``
