@@ -5,7 +5,7 @@ import os
 import unicodedata
 
 # ===============================
-# CONFIG (CHAMAR UMA VEZ, NO TOPO)
+# CONFIG
 # ===============================
 st.set_page_config(
     page_title="Sistema de Consulta Hazard Grade",
@@ -16,7 +16,7 @@ st.set_page_config(
 # ===============================
 # CREDENCIAIS
 # ===============================
-USUARIO_CORRETO = "allianz_mrm"
+USUARIO_CORRETO = "allianz"
 SENHA_CORRETA = "@9A3F7C2E4BÇ!#"
 
 # ===============================
@@ -57,7 +57,7 @@ def selecionar_sugestao(valor):
     st.session_state.executar_busca = True
 
 # ===============================
-# TELA DE LOGIN
+# LOGIN
 # ===============================
 if not st.session_state.autenticado:
     st.markdown("## 🔐 Acesso restrito")
@@ -89,10 +89,7 @@ css = (
     ".stApp{background-color:#0A2D82;}"
     "h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}"
     ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
-    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:10px;}"
-    ".clear-x button{background:none;border:none;font-size:20px;"
-    "color:#FFFFFF;font-weight:900;cursor:pointer;margin-top:32px;}"
-    ".clear-x button:hover{color:#FFCDD2;}"
+    "height:50px;border-radius:12px;font-size:18px;border:none!important;}"
     ".chip button{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.35)!important;"
     "color:#fff!important;border-radius:999px!important;padding:6px 12px!important;margin:4px 6px 0 0!important;"
     "font-weight:700!important;}"
@@ -130,7 +127,6 @@ st.markdown(
 def carregar_dados():
     if not EXCEL_PATH.exists():
         st.error("❌ Arquivo HG_ATUALIZADOS.xlsx não encontrado.")
-        st.write("📁 Arquivos encontrados:", sorted(os.listdir(BASE_DIR)))
         st.stop()
 
     df = pd.read_excel(EXCEL_PATH)
@@ -138,38 +134,27 @@ def carregar_dados():
 
     if "ATIVIDADE" not in df.columns or "HAZARD GRADE" not in df.columns:
         st.error("❌ O Excel deve conter ATIVIDADE e HAZARD GRADE.")
-        st.write("Colunas encontradas:", list(df.columns))
         st.stop()
 
     df["ATIVIDADE"] = df["ATIVIDADE"].astype(str)
     df["_ATIVIDADE_LIMPA"] = df["ATIVIDADE"].apply(normalizar_texto)
 
-    # lista única para autocomplete
-    base = df[["ATIVIDADE", "_ATIVIDADE_LIMPA"]].drop_duplicates()
-    base = base.sort_values("ATIVIDADE")
-    sugestoes = list(base.itertuples(index=False, name=None))  # (ATIVIDADE, _ATIVIDADE_LIMPA)
+    base = df[["ATIVIDADE", "_ATIVIDADE_LIMPA"]].drop_duplicates().sort_values("ATIVIDADE")
+    sugestoes = list(base.itertuples(index=False, name=None))
 
     return df, sugestoes
 
 df, sugestoes_base = carregar_dados()
 
 # ===============================
-# BUSCA + X + BOTÕES
+# BUSCA
 # ===============================
-col_input, col_x = st.columns([12, 1])
-
-with col_input:
-    st.text_input(
-        "O que você deseja buscar?",
-        placeholder="Ex: Fabricação de tintas...",
-        key="input_busca",
-        on_change=on_change_busca
-    )
-
-with col_x:
-    st.markdown("<div class='clear-x'>", unsafe_allow_html=True)
-    st.button("✕", key="btn_x", on_click=limpar_tudo, help="Limpar campo")
-    st.markdown("</div>", unsafe_allow_html=True)
+st.text_input(
+    "O que você deseja buscar?",
+    placeholder="Ex: Fabricação de tintas...",
+    key="input_busca",
+    on_change=on_change_busca
+)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -178,13 +163,11 @@ with col2:
     st.button("🗑️ Limpar", on_click=limpar_tudo)
 
 # ===============================
-# AUTOCOMPLETE (DESKTOP + MOBILE)
+# AUTOCOMPLETE
 # ===============================
-termo_digitado = st.session_state.input_busca
-termo_limpo = normalizar_texto(termo_digitado)
+termo_limpo = normalizar_texto(st.session_state.input_busca)
 
 if termo_limpo:
-    # sugestões por "contém" (bom pra mobile/desktop)
     sugestoes = []
     for atividade, atividade_limpa in sugestoes_base:
         if termo_limpo in atividade_limpa:
@@ -194,16 +177,15 @@ if termo_limpo:
 
     if sugestoes:
         st.markdown("**Sugestões:**")
-        # chips em colunas (no mobile empilha, no desktop fica lado a lado)
         cols = st.columns(2)
         for i, sug in enumerate(sugestoes):
             with cols[i % 2]:
                 st.markdown("<div class='chip'>", unsafe_allow_html=True)
-                st.button(sug, key=f"sug_{i}_{sug}", on_click=selecionar_sugestao, args=(sug,))
+                st.button(sug, key=f"sug_{i}", on_click=selecionar_sugestao, args=(sug,))
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # ===============================
-# RENDER RESULTADO
+# RESULTADOS
 # ===============================
 def renderizar_resultado(atividade, hazard):
     try:
@@ -219,11 +201,7 @@ def renderizar_resultado(atividade, hazard):
         alerta = ""
     else:
         cor = "#D32F2F"
-        alerta = (
-            "<div class='alert-box'>"
-            "⚠️ HAZARD ALTO: Verifique possível solicitação de inspeção!"
-            "</div>"
-        )
+        alerta = "<div class='alert-box'>⚠️ HAZARD ALTO</div>"
 
     html = (
         "<div class='result-card' style='border-left-color:" + cor + ";'>"
@@ -236,9 +214,6 @@ def renderizar_resultado(atividade, hazard):
     )
     st.markdown(html, unsafe_allow_html=True)
 
-# ===============================
-# EXECUTAR BUSCA (NORMALIZADA)
-# ===============================
 if st.session_state.executar_busca:
     termo_busca = normalizar_texto(st.session_state.termo)
     if termo_busca:
@@ -248,7 +223,5 @@ if st.session_state.executar_busca:
         else:
             for _, row in resultados.iterrows():
                 renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
-    else:
-        st.warning("Digite um termo para pesquisar.")
 else:
-    st.info("👋 Digite uma atividade e clique em Pesquisar (ou toque em uma sugestão).")
+    st.info("👋 Digite uma atividade ou selecione uma sugestão.")
