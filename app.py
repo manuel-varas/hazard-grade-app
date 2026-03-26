@@ -20,13 +20,13 @@ st.set_page_config(
 )
 
 # ===============================
-# ESTADO (necessário p/ botão Limpar)
+# ESTADO (botão Limpar)
 # ===============================
 if "busca" not in st.session_state:
     st.session_state.busca = ""
 
 # ===============================
-# CSS (BOTÕES COM TEXTO AZUL ✅)
+# CSS (BOTÕES COM TEXTO AZUL)
 # ===============================
 css = (
     "<style>"
@@ -36,14 +36,13 @@ css = (
     ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
     "height:50px;border-radius:12px;font-size:18px;border:none!important;}"
 
-    /* BOTÕES */
     "div.stButton>button{"
     "height:50px;"
     "border-radius:12px;"
     "font-weight:bold;"
     "border:2px solid white;"
     "background:white;"
-    "color:#0A2D82;"   /* TEXTO AZUL ✅ */
+    "color:#0A2D82;"
     "transition:.2s;"
     "}"
 
@@ -83,7 +82,7 @@ st.markdown(
 @st.cache_data
 def carregar_dados():
     if not EXCEL_PATH.exists():
-        st.error("❌ Não encontrei HG_ATUALIZADOS.xlsx na raiz do repositório.")
+        st.error("Não encontrei HG_ATUALIZADOS.xlsx na raiz do repositório.")
         st.write("Arquivos encontrados:", sorted(os.listdir(BASE_DIR)))
         st.stop()
 
@@ -94,7 +93,7 @@ def carregar_dados():
 df = carregar_dados()
 
 # ===============================
-# FORMULÁRIO (Pesquisar + Limpar ✅)
+# FORMULÁRIO
 # ===============================
 with st.form("form_busca"):
     termo = st.text_input(
@@ -129,7 +128,7 @@ def renderizar_resultado(atividade, hazard):
         alerta = ""
     else:
         cor = "#D32F2F"
-        alerta = "<div class='alert-box'>⚠️ HAZARD ALTO: Verifique possível solicitação de inspeção!</div>"
+        alerta = "<div class='alert-box'>Hazard alto: verificar possível inspeção</div>"
 
     html = (
         "<div class='result-card' style='border-left-color:" + cor + ";'>"
@@ -157,5 +156,5 @@ if pesquisar:
     else:
         st.warning("Digite um termo para pesquisar.")
 else:
-    st.info("👋 Digite uma atividade e clique em Pesquisar.")
+    st.info("Digite uma atividade e clique em Pesquisar.")
 ``
