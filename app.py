@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 
 # ===============================
-# CAMINHOS (RAIZ DO REPO)
+# CAMINHOS
 # ===============================
 BASE_DIR = Path(__file__).parent
 EXCEL_PATH = BASE_DIR / "HG_ATUALIZADOS.xlsx"
@@ -20,14 +20,18 @@ st.set_page_config(
 )
 
 # ===============================
-# CSS
+# CSS (ADICIONADO BOTÃO X)
 # ===============================
 css = (
     "<style>"
     ".stApp{background-color:#0A2D82;}"
     "h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}"
-    ".stTextInput input{background-color:white!important;color:#0A2D82!important;height:50px;"
-    "border-radius:12px;font-size:18px;border:none!important;}"
+    ".stTextInput{position:relative;}"
+    ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
+    "height:50px;border-radius:12px;font-size:18px;border:none!important;padding-right:45px;}"
+    ".clear-btn{position:absolute;right:15px;top:50%;transform:translateY(-50%);"
+    "font-size:20px;color:#0A2D82;cursor:pointer;font-weight:900;}"
+    ".clear-btn:hover{color:#D32F2F;}"
     "div.stButton>button{height:50px;border-radius:12px;font-weight:bold;"
     "border:2px solid white;background:transparent;color:white;transition:.2s;}"
     "div.stButton>button:hover{background:white;color:#0A2D82;}"
@@ -66,16 +70,14 @@ if "termo" not in st.session_state:
 @st.cache_data
 def carregar_dados():
     if not EXCEL_PATH.exists():
-        st.error("❌ Não encontrei o arquivo HG_ATUALIZADOS.xlsx na raiz do repositório.")
-        st.write("📁 Arquivos encontrados:", sorted(os.listdir(BASE_DIR)))
+        st.error("❌ Não encontrei o arquivo HG_ATUALIZADOS.xlsx.")
         st.stop()
 
     df = pd.read_excel(EXCEL_PATH)
     df.columns = df.columns.str.strip().str.upper()
 
     if "ATIVIDADE" not in df.columns or "HAZARD GRADE" not in df.columns:
-        st.error("❌ O Excel precisa conter as colunas ATIVIDADE e HAZARD GRADE.")
-        st.write("Colunas encontradas:", list(df.columns))
+        st.error("❌ Colunas esperadas não encontradas.")
         st.stop()
 
     return df
@@ -89,8 +91,15 @@ with st.form("form_busca", clear_on_submit=False):
     termo = st.text_input(
         "O que você deseja buscar?",
         placeholder="Ex: Fabricação de tintas...",
-        value=st.session_state.termo
+        value=st.session_state.termo,
+        key="input_busca"
     )
+
+    # BOTÃO X (HTML)
+    if st.session_state.termo:
+        if st.button("❌", key="clear_x"):
+            st.session_state.termo = ""
+            st.rerun()
 
     col1, col2 = st.columns(2)
     with col1:
@@ -99,7 +108,7 @@ with st.form("form_busca", clear_on_submit=False):
         limpar = st.form_submit_button("🗑️ Limpar")
 
 # ===============================
-# AÇÕES DOS BOTÕES
+# AÇÕES
 # ===============================
 if limpar:
     st.session_state.termo = ""
@@ -109,14 +118,10 @@ if pesquisar:
     st.session_state.termo = termo
 
 # ===============================
-# RENDER RESULTADO
+# RESULTADOS
 # ===============================
 def renderizar_resultado(atividade, hazard):
-    try:
-        hz = float(hazard)
-    except Exception:
-        hz = 0.0
-
+    hz = float(hazard) if str(hazard).replace(".", "").isdigit() else 0
     if hz <= 4:
         cor = "#00C853"
         alerta = ""
@@ -125,16 +130,12 @@ def renderizar_resultado(atividade, hazard):
         alerta = ""
     else:
         cor = "#D32F2F"
-        alerta = (
-            "<div class='alert-box'>"
-            "⚠️ HAZARD ALTO: Verifique possível solicitação de inspeção!"
-            "</div>"
-        )
+        alerta = "<div class='alert-box'>⚠️ HAZARD ALTO</div>"
 
     html = (
         "<div class='result-card' style='border-left-color:" + cor + ";'>"
         "<div class='ativid-title'>ATIVIDADE</div>"
-        "<div style='color:#333;margin-bottom:10px;'>" + str(atividade) + "</div>"
+        "<div>" + str(atividade) + "</div>"
         "<div class='ativid-title'>HAZARD GRADE</div>"
         "<div class='hazard-value' style='color:" + cor + ";'>" + str(hazard) + "</div>"
         + alerta +
@@ -142,24 +143,10 @@ def renderizar_resultado(atividade, hazard):
     )
     st.markdown(html, unsafe_allow_html=True)
 
-# ===============================
-# BUSCA
-# ===============================
 if pesquisar and st.session_state.termo:
-    resultados = df[
-        df["ATIVIDADE"]
-        .astype(str)
-        .str.contains(st.session_state.termo, case=False, na=False)
-    ]
-
-    if resultados.empty:
-        st.error(f"Nenhum resultado encontrado para '{st.session_state.termo}'.")
-    else:
-        for _, row in resultados.iterrows():
-            renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
-
-elif not pesquisar:
-    st.info(
-        """👋 Digite uma atividade e clique em Pesquisar.
-Use o botão Limpar para apagar o campo de busca."""
-    )
+    resultados = df[df["ATIVIDADE"].str.contains(st.session_state.termo, case=False, na=False)]
+    for _, row in resultados.iterrows():
+        renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
+else:
+    st.info("👋 Digite uma atividade e clique em Pesquisar.")
+``
