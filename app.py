@@ -4,6 +4,35 @@ from pathlib import Path
 import os
 
 # ===============================
+# CREDENCIAIS
+# ===============================
+USUARIO_CORRETO = "allianz_mrm"
+SENHA_CORRETA = "@9A3F7C2E4BÇ!#"
+
+# ===============================
+# CONTROLE DE LOGIN
+# ===============================
+if "autenticado" not in st.session_state:
+    st.session_state.autenticado = False
+
+if not st.session_state.autenticado:
+    st.set_page_config(page_title="Login", page_icon="🔐", layout="centered")
+
+    st.markdown("## 🔐 Acesso restrito")
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+
+    if st.button("Entrar"):
+        if usuario == USUARIO_CORRETO and senha == SENHA_CORRETA:
+            st.session_state.autenticado = True
+            st.success("✅ Login realizado com sucesso")
+            st.rerun()
+        else:
+            st.error("❌ Usuário ou senha inválidos")
+
+    st.stop()
+
+# ===============================
 # CAMINHOS
 # ===============================
 BASE_DIR = Path(__file__).parent
