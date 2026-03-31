@@ -70,10 +70,6 @@ st.markdown("""
 h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
 .stTextInput input{background-color:white!important;color:#0A2D82!important;
 height:50px;border-radius:12px;font-size:18px;border:none!important;}
-.chip button{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.35)!important;
-color:#fff!important;border-radius:999px!important;padding:6px 12px!important;margin:4px 6px 0 0!important;
-font-weight:700!important;}
-.chip button:hover{background:rgba(255,255,255,.25)!important;}
 div.stButton>button{height:50px;border-radius:12px;font-weight:bold;
 border:2px solid white;background:transparent;color:white;}
 .result-card{background:white;padding:22px;border-radius:15px;margin-bottom:16px;
@@ -109,10 +105,9 @@ def carregar_dados():
     df.columns = df.columns.str.strip().str.upper()
     df["ATIVIDADE"] = df["ATIVIDADE"].astype(str)
     df["_ATIVIDADE_LIMPA"] = df["ATIVIDADE"].apply(normalizar_texto)
-    base = df[["ATIVIDADE", "_ATIVIDADE_LIMPA"]].drop_duplicates()
-    return df, list(base.itertuples(index=False, name=None))
+    return df
 
-df, sugestoes_base = carregar_dados()
+df = carregar_dados()
 
 st.text_input("O que você deseja buscar?", key="input_busca", on_change=on_change_busca)
 
@@ -120,7 +115,6 @@ if st.button("🔍 Pesquisar"):
     pesquisar_agora()
 
 def renderizar_resultado(atividade, hazard):
-
     if isinstance(hazard, str) and hazard.strip().upper() == "ATIVIDADE PROIBIDA":
         st.markdown(
             f"""
@@ -153,6 +147,6 @@ def renderizar_resultado(atividade, hazard):
 
 if st.session_state.executar_busca:
     termo = normalizar_texto(st.session_state.termo)
-    for _, r in df[df["_ATIVIDADE_LIMPA"].str.contains(termo, na=False)].iterrows():
+    resultados = df[df["_ATIVIDADE_LIMPA"].str.contains(termo, na=False)]
+    for _, r in resultados.iterrows():
         renderizar_resultado(r["ATIVIDADE"], r["HAZARD GRADE"])
-``
