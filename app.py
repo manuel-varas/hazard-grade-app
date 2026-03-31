@@ -84,27 +84,27 @@ LOGO_PATH = BASE_DIR / "allianz_logo.png"
 # ===============================
 # CSS
 # ===============================
-css = (
-    "<style>"
-    ".stApp{background-color:#0A2D82;}"
-    "h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}"
-    ".stTextInput input{background-color:white!important;color:#0A2D82!important;"
-    "height:50px;border-radius:12px;font-size:18px;border:none!important;}"
-    ".chip button{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.35)!important;"
-    "color:#fff!important;border-radius:999px!important;padding:6px 12px!important;margin:4px 6px 0 0!important;"
-    "font-weight:700!important;}"
-    ".chip button:hover{background:rgba(255,255,255,.25)!important;}"
-    "div.stButton>button{height:50px;border-radius:12px;font-weight:bold;"
-    "border:2px solid white;background:transparent;color:white;transition:.2s;}"
-    "div.stButton>button:hover{background:white;color:#0A2D82;}"
-    ".result-card{background:white;padding:22px;border-radius:15px;margin-bottom:16px;"
-    "box-shadow:0 10px 20px rgba(0,0,0,.2);border-left:10px solid #ddd;}"
-    ".ativid-title{color:#0A2D82!important;font-weight:800;margin-bottom:6px;font-size:18px;}"
-    ".hazard-value{font-size:26px;font-weight:900;}"
-    ".alert-box{background:#ffebee;color:#c62828!important;padding:10px;border-radius:8px;"
-    "font-weight:800;margin-top:10px;border:1px dashed #c62828;}"
-    "</style>"
-)
+css = """
+<style>
+.stApp{background-color:#0A2D82;}
+h1,label,p{color:white!important;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
+.stTextInput input{background-color:white!important;color:#0A2D82!important;
+height:50px;border-radius:12px;font-size:18px;border:none!important;}
+.chip button{background:rgba(255,255,255,.12)!important;border:1px solid rgba(255,255,255,.35)!important;
+color:#fff!important;border-radius:999px!important;padding:6px 12px!important;margin:4px 6px 0 0!important;
+font-weight:700!important;}
+.chip button:hover{background:rgba(255,255,255,.25)!important;}
+div.stButton>button{height:50px;border-radius:12px;font-weight:bold;
+border:2px solid white;background:transparent;color:white;transition:.2s;}
+div.stButton>button:hover{background:white;color:#0A2D82;}
+.result-card{background:white;padding:22px;border-radius:15px;margin-bottom:16px;
+box-shadow:0 10px 20px rgba(0,0,0,.2);border-left:10px solid #ddd;}
+.ativid-title{color:#0A2D82!important;font-weight:800;margin-bottom:6px;font-size:18px;}
+.hazard-value{font-size:26px;font-weight:900;}
+.alert-box{background:#ffebee;color:#c62828!important;padding:12px;border-radius:8px;
+font-weight:900;margin-top:10px;border:2px dashed #c62828;text-align:center;}
+</style>
+"""
 st.markdown(css, unsafe_allow_html=True)
 
 # ===============================
@@ -188,6 +188,21 @@ if termo_limpo:
 # RESULTADOS
 # ===============================
 def renderizar_resultado(atividade, hazard):
+
+    # >>> TRATAMENTO DE ATIVIDADE PROIBIDA <<<
+    if isinstance(hazard, str) and hazard.strip().upper() == "ATIVIDADE PROIBIDA":
+        html = (
+            "<div class='result-card' style='border-left-color:#000;'>"
+            "<div class='ativid-title'>ATIVIDADE</div>"
+            "<div style='color:#333;margin-bottom:10px;'>" + str(atividade) + "</div>"
+            "<div class='alert-box' style='font-size:22px;'>"
+            "🚫 PROIBIDO SEGUIR COTAÇÃO<br>ATIVIDADE PROIBIDA"
+            "</div>"
+            "</div>"
+        )
+        st.markdown(html, unsafe_allow_html=True)
+        return
+
     try:
         hz = float(hazard)
     except Exception:
@@ -225,3 +240,4 @@ if st.session_state.executar_busca:
                 renderizar_resultado(row["ATIVIDADE"], row["HAZARD GRADE"])
 else:
     st.info("👋 Digite uma atividade ou selecione uma sugestão.")
+``
