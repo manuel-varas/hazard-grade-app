@@ -5,32 +5,20 @@ import pandas as pd
 from pathlib import Path
 import unicodedata
 
-# ===============================
-# CONFIG
-# ===============================
 st.set_page_config(
     page_title="Sistema de Consulta Hazard Grade",
     page_icon="🔍",
     layout="centered"
 )
 
-# ===============================
-# CREDENCIAIS
-# ===============================
 USUARIO_CORRETO = "allianz"
 SENHA_CORRETA = "@9A3F7C2E4BÇ!#"
 
-# ===============================
-# SESSION STATE
-# ===============================
 st.session_state.setdefault("autenticado", False)
 st.session_state.setdefault("termo", "")
 st.session_state.setdefault("input_busca", "")
 st.session_state.setdefault("executar_busca", False)
 
-# ===============================
-# FUNÇÕES
-# ===============================
 def normalizar_texto(texto):
     if texto is None:
         return ""
@@ -57,9 +45,6 @@ def selecionar_sugestao(valor):
     st.session_state.termo = valor
     st.session_state.executar_busca = True
 
-# ===============================
-# LOGIN
-# ===============================
 if not st.session_state.autenticado:
     st.markdown("## 🔐 Acesso restrito")
     usuario = st.text_input("Usuário")
@@ -75,16 +60,10 @@ if not st.session_state.autenticado:
 
     st.stop()
 
-# ===============================
-# CAMINHOS
-# ===============================
 BASE_DIR = Path(__file__).parent
 EXCEL_PATH = BASE_DIR / "HG_ATUALIZADOS.xlsx"
 LOGO_PATH = BASE_DIR / "allianz_logo.png"
 
-# ===============================
-# CSS
-# ===============================
 st.markdown("""
 <style>
 .stApp{background-color:#0A2D82;}
@@ -103,12 +82,17 @@ box-shadow:0 10px 20px rgba(0,0,0,.2);border-left:10px solid #ddd;}
 .hazard-value{font-size:26px;font-weight:900;}
 .alert-box{background:#ffebee;color:#c62828!important;padding:14px;border-radius:8px;
 font-weight:900;margin-top:10px;border:2px dashed #c62828;text-align:center;}
+
+@media (max-width: 768px){
+    h1{font-size:22px!important;}
+    .stTextInput input{height:46px;font-size:16px;}
+    div.stButton>button{height:46px;font-size:15px;}
+    .result-card{padding:16px;}
+    .hazard-value{font-size:22px;}
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ===============================
-# CABEÇALHO
-# ===============================
 c1, c2, c3 = st.columns([1, 2, 1])
 with c2:
     if LOGO_PATH.exists():
@@ -119,9 +103,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ===============================
-# CARREGAR EXCEL
-# ===============================
 @st.cache_data
 def carregar_dados():
     df = pd.read_excel(EXCEL_PATH)
@@ -133,17 +114,11 @@ def carregar_dados():
 
 df, sugestoes_base = carregar_dados()
 
-# ===============================
-# BUSCA
-# ===============================
 st.text_input("O que você deseja buscar?", key="input_busca", on_change=on_change_busca)
 
 if st.button("🔍 Pesquisar"):
     pesquisar_agora()
 
-# ===============================
-# RESULTADOS
-# ===============================
 def renderizar_resultado(atividade, hazard):
 
     if isinstance(hazard, str) and hazard.strip().upper() == "ATIVIDADE PROIBIDA":
@@ -180,3 +155,4 @@ if st.session_state.executar_busca:
     termo = normalizar_texto(st.session_state.termo)
     for _, r in df[df["_ATIVIDADE_LIMPA"].str.contains(termo, na=False)].iterrows():
         renderizar_resultado(r["ATIVIDADE"], r["HAZARD GRADE"])
+``
